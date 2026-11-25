@@ -23,12 +23,23 @@ import { excessPhiMention, findPhone, last4, redact, redactDeep } from "@/lib/re
 import {
   detectEmergency,
   emergencyCopy,
+  frustrationCopy,
+  humanHandoffCopy,
   injectionAttempt,
   injectionCopy,
+  isFrustrated,
+  isGreeting,
   isMedicalAdvice,
+  isOffTopic,
+  isSensitive,
+  offTopicCopy,
   refusalCopy,
+  sensitiveCopy,
+  wantsHuman,
   type EmergencyKind,
 } from "@/lib/safety";
+import { conversationSummary } from "@/lib/summary";
+import type { HandoffCategory } from "@/lib/types";
 import { ClinicStore } from "@/lib/store";
 import { mentionedWeekday, parseTime } from "@/lib/time";
 import type {
@@ -220,6 +231,31 @@ export function handleTurn(
 
   const emergency = detectEmergency(message);
   if (emergency) return handoff(store, session, emergency);
+  if (isSensitive(message)) return staffHandoff(store, session, "sensitive");
+  if (wantsHuman(message)) return staffHandoff(store, session, "human_request");
+  if (isFrustrated(message)) return staffHandoff(store, session, "frustration");
+  if (isOffTopic(message)) {
+    return finish(store, session, {
+      text: offTopicCopy(),
+      citations: [],
+      tools: [],
+      suggestions: ["What are your hours?", "Do you accept Blue Cross?"],
+      emergency: false,
+      refusal: true,
+      handoff: false,
+    });
+  }
+  if (isGreeting(message)) {
+    return finish(store, session, {
+      text: "Hello. I can check a plan, find a clinician, book a visit, or quote the patient guide. What do you need?",
+      citations: [],
+      tools: [],
+      suggestions: ["Do you accept Blue Cross?", "What are your hours?", "I want to talk to a human"],
+      emergency: false,
+      refusal: false,
+      handoff: false,
+    });
+  }
 
   const advice = isMedicalAdvice(message);
   const doing = operational(message, session);
@@ -370,9 +406,16 @@ export function handleTurn(
       for (const item of grounded.citations) {
         if (!citations.some((existing) => existing.id === item.id)) citations.push(item);
       }
-    } else if (sections.length === 0) {
-      sections.push(abstainCopy());
     }
+  }
+
+  if (!sections.length && tools.length === 0 && citations.length === 0) {
+    return staffHandoff(
+      store,
+      session,
+      "low_confidence",
+      `${abstainCopy()} I flagged a staff handoff so a person can follow up.`,
+    );
   }
 
   if (!sections.length) sections.push(abstainCopy());
@@ -390,6 +433,48 @@ export function handleTurn(
   });
 }
 
+function staffHandoff(
+  store: ClinicStore,
+  session: Session,
+  category: HandoffCategory,
+  text?: string,
+): TurnResult {
+  const summary = conversationSummary(session);
+  const copy =
+    text ??
+    (category === "sensitive"
+      ? sensitiveCopy()
+      : category === "frustration"
+        ? frustrationCopy()
+        : humanHandoffCopy());
+  store.addHandoff({
+    sessionId: session.id,
+    category,
+    note:
+      category === "low_confidence"
+        ? "Retrieval confidence was too low to answer from the patient guide."
+        : "A person needs to pick up this conversation.",
+    summary,
+  });
+  store.addAudit({
+    actor: "guide",
+    action: "staff_handoff",
+    resource: category,
+    detail: `Flagged a ${category} handoff. Summary stored on the ticket.`,
+    sessionId: session.id,
+  });
+  return finish(store, session, {
+    text: copy,
+    citations: [],
+    tools: [trace("flag_staff_handoff", { category }, { status: "flagged" })],
+    suggestions: [],
+    emergency: false,
+    refusal: category === "sensitive",
+    handoff: true,
+    expecting: null,
+  });
+}
+
 function handoff(store: ClinicStore, session: Session, kind: EmergencyKind): TurnResult {
   const category = kind === "crisis" ? "emergency_crisis" : "emergency_medical";
   store.addHandoff({
@@ -399,6 +484,10 @@ function handoff(store: ClinicStore, session: Session, kind: EmergencyKind): Tur
       kind === "crisis"
         ? "Crisis keywords. Transcript was not copied into this handoff."
         : "Possible emergency keywords. Transcript was not copied into this handoff.",
+    summary:
+      kind === "crisis"
+        ? "Suicidal-crisis keywords. The message was not copied."
+        : "Possible emergency keywords. The message was not copied.",
   });
   const tool = trace(
     "flag_staff_handoff",
@@ -1071,8 +1160,12 @@ function suggest(session: Session): string[] {
   return [];
 }
 
-export function startSession(store: ClinicStore, consent: boolean): Session {
-  const session = store.createSession(consent);
+export function startSession(
+  store: ClinicStore,
+  consent: boolean,
+  meta?: { channel?: Session["channel"]; externalKey?: string | null },
+): Session {
+  const session = store.createSession(consent, meta);
   store.addAudit({
     actor: "patient",
     action: "session_start",

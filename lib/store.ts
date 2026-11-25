@@ -5,6 +5,7 @@ import type {
   Appointment,
   AuditEvent,
   CallbackRequest,
+  Channel,
   ChatMessage,
   Feedback,
   Handoff,
@@ -39,11 +40,16 @@ export class ClinicStore {
   callbackSeq = 300;
   onChange?: () => void;
 
-  createSession(consent = true): Session {
+  createSession(
+    consent = true,
+    meta?: { channel?: Channel; externalKey?: string | null },
+  ): Session {
     const session: Session = {
       id: randomUUID(),
       createdAt: new Date().toISOString(),
       consent,
+      channel: meta?.channel ?? "web",
+      externalKey: meta?.externalKey ?? null,
       messages: [],
       expecting: null,
       isNewPatient: false,
@@ -67,6 +73,25 @@ export class ClinicStore {
 
   getSession(id: string): Session | undefined {
     return this.sessions.find((session) => session.id === id);
+  }
+
+  findByExternal(channel: Channel, externalKey: string): Session | undefined {
+    return this.sessions.find(
+      (session) => session.channel === channel && session.externalKey === externalKey,
+    );
+  }
+
+  resetRecords() {
+    this.sessions = [];
+    this.appointments = [];
+    this.tickets = [];
+    this.callbacks = [];
+    this.handoffs = [];
+    this.audit = [];
+    this.feedback = [];
+    this.confirmationSeq = 1000;
+    this.ticketSeq = 200;
+    this.callbackSeq = 300;
   }
 
   takenSlotIds(): Set<string> {
@@ -225,6 +250,11 @@ export class ClinicStore {
     for (const session of this.sessions) {
       session.pendingConfirmation ??= null;
       session.offeredSlots ??= [];
+      session.channel ??= "web";
+      session.externalKey ??= null;
+    }
+    for (const handoff of this.handoffs) {
+      handoff.summary ??= handoff.note;
     }
   }
 }

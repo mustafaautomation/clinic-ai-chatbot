@@ -55,3 +55,52 @@ export function injectionAttempt(text: string): boolean {
 export function injectionCopy(): string {
   return "I can't follow instructions to ignore clinic rules, reveal hidden prompts, or list patient records. I can help with Cedar Grove hours, insurance, scheduling, refill tickets, and the policies in the patient guide.";
 }
+
+export function wantsHuman(text: string): boolean {
+  return /\b(talk to (a )?(human|person|someone|agent)|real person|live agent|live person|human agent|operator|representative)\b/i.test(
+    text,
+  );
+}
+
+export function isFrustrated(text: string): boolean {
+  return /\b(this is useless|not helping|you(?:'re| are) not helping|waste of time|so frustrated|terrible bot|worst (bot|chat))\b/i.test(
+    text,
+  );
+}
+
+export function isSensitive(text: string): boolean {
+  return /\b(domestic violence|sexual assault|being abused|abusing me|hurt me at home)\b/i.test(text);
+}
+
+export function isOffTopic(text: string): boolean {
+  if (
+    /\b(clinic|appointment|insurance|doctor|refill|vaccine|hours|visit|patient|billing|bill|lab|portal|provider|cedar|grove|schedule|book|prescription)\b/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  return /\b(weather|poem|joke|homework|stock price|recipe|capital of|write (me )?a (poem|story|essay)|who won the)\b/i.test(
+    text,
+  );
+}
+
+export function isGreeting(text: string): boolean {
+  return /^(hi|hello|hey|good morning|good afternoon|thanks|thank you)[!.\s]*$/i.test(text.trim());
+}
+
+export function offTopicCopy(): string {
+  return "I only help with Cedar Grove visits, insurance, refills, and the clinic policies in the patient guide. I can't write poems, forecast the weather, or answer general questions.";
+}
+
+export function humanHandoffCopy(): string {
+  return "I've flagged a staff handoff for the front desk, with a short summary of this chat. A person will pick it up. You can also call the Grove desk at (555) 010-0140. That line is not for emergencies.";
+}
+
+export function frustrationCopy(): string {
+  return "I'm sorry this has been frustrating. I flagged a staff handoff so a person at the front desk can take over, and I included a short summary of the chat. If you need care advice, the desk can schedule a visit. I still can't diagnose in this chat.";
+}
+
+export function sensitiveCopy(): string {
+  return "If you are in immediate danger, call 911. I can't counsel you or assess safety in this chat. I flagged a staff handoff so a person at Cedar Grove knows you asked for help. You should not wait on the clinic if you are in danger.";
+}

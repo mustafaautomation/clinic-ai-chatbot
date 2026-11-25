@@ -112,9 +112,11 @@ export default function DocsPage() {
           <p>
             Safety runs first. Then the local engine decides which tools to call and which guide paragraphs
             to quote. That path does not need an API key, which is what the evals exercise. If{" "}
-            <code className="rounded bg-secondary px-1">OPENAI_API_KEY</code> is set, a model may rephrase
-            an ordinary answer. It is not allowed to rephrase emergencies or refusals, and a rephrase that
-            drops a confirmation code is discarded.
+            <code className="rounded bg-secondary px-1">GROQ_API_KEY</code> is set, Llama 3.3 70B on Groq
+            calls the clinic tools and writes from the retrieved passages. If Groq fails and{" "}
+            <code className="rounded bg-secondary px-1">GEMINI_API_KEY</code> is set, Gemini 2.0 Flash is
+            the fallback. Emergencies, dosing, diagnosis, and prompt-injection attempts never leave the
+            local guardrails. With neither key, the deterministic engine runs the same tools.
           </p>
           <pre className="overflow-x-auto rounded-2xl bg-card p-4 text-xs leading-5 ring-1 ring-foreground/10 whitespace-pre-wrap">
             {SYSTEM_PROMPT}

@@ -4,6 +4,7 @@ import { Mark } from "@/components/mark";
 
 const LINKS = [
   { href: "/chat", label: "Chat" },
+  { href: "/embed-demo", label: "Widget" },
   { href: "/knowledge", label: "Guide" },
   { href: "/docs", label: "Safety" },
   { href: "/admin", label: "Staff desk" },

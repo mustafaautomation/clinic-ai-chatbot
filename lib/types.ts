@@ -63,10 +63,14 @@ export type Expecting =
   | "callback"
   | null;
 
+export type Channel = "web" | "widget" | "whatsapp" | "messenger";
+
 export type Session = {
   id: string;
   createdAt: string;
   consent: boolean;
+  channel: Channel;
+  externalKey: string | null;
   messages: ChatMessage[];
   expecting: Expecting;
   isNewPatient: boolean;
@@ -134,13 +138,22 @@ export type CallbackRequest = {
   synthetic: true;
 };
 
+export type HandoffCategory =
+  | "emergency_medical"
+  | "emergency_crisis"
+  | "human_request"
+  | "frustration"
+  | "low_confidence"
+  | "sensitive";
+
 export type Handoff = {
   id: string;
   sessionId: string;
-  category: "emergency_medical" | "emergency_crisis";
+  category: HandoffCategory;
   createdAt: string;
   status: "flagged";
   note: string;
+  summary: string;
 };
 
 export type AuditEvent = {

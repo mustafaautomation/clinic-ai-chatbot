@@ -14,7 +14,7 @@ export function SiteFooter() {
           </Link>
           .
         </p>
-        <p>Portfolio demo · not medical advice · call 911 in an emergency</p>
+        <p>Portfolio demo by Quvantic - fictional brand, not a real business / not client work</p>
       </div>
     </footer>
   );

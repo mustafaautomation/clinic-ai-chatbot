@@ -209,6 +209,18 @@ export function AdminDesk() {
           <Button type="button" variant="outline" onClick={() => void retention()}>
             Run retention pass
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void fetch("/api/admin/reset", { method: "POST" }).then(() => {
+                setNotice("Demo records were reset to the synthetic seed.");
+                void load();
+              });
+            }}
+          >
+            Reset demo data
+          </Button>
           <Button type="button" variant="outline" onClick={() => void logout()}>
             Lock desk
           </Button>
@@ -247,6 +259,11 @@ export function AdminDesk() {
                   <p key={message.id} className="text-sm">
                     <span className="font-medium">{message.role === "user" ? "Patient" : "Guide"}: </span>
                     {message.text}
+                    {message.tools?.length ? (
+                      <span className="mt-1 block text-xs text-moss">
+                        Tools: {message.tools.map((tool) => tool.name).join(", ")}
+                      </span>
+                    ) : null}
                   </p>
                 ))}
               </div>
@@ -329,7 +346,7 @@ export function AdminDesk() {
               <ul className="mt-2 space-y-1">
                 {state.handoffs.map((handoff) => (
                   <li key={handoff.id}>
-                    {handoff.category} · {handoff.note}
+                    {handoff.category} · {handoff.summary || handoff.note}
                   </li>
                 ))}
               </ul>

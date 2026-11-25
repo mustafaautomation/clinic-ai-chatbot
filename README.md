@@ -1,8 +1,108 @@
-# Cedar Grove Family Clinic guide
+# Cedar Grove Family Clinic
 
-Portfolio demo of an AI chat assistant for a fictional clinic. It answers from a patient guide, calls scheduling tools, and refuses clinical advice. Subdomain label: `clinic-chat`.
+Portfolio demo by Quvantic - fictional brand, not a real business / not client work.
 
-Nothing here is a real clinic, a real patient, or a HIPAA-covered deployment. Do not type real health information.
+A clinic chat assistant for scheduling, insurance, and the patient guide. It does not diagnose. Every patient, plan, and appointment in the demo is synthetic.
+
+Live demo: [https://clinic-chat.quvantic.com](https://clinic-chat.quvantic.com)
+
+![Cedar Grove chat demo](docs/demo.gif)
+
+## What it does
+
+A new patient can ask whether Blue Cross is in network, choose Spanish-speaking family medicine, pick an opening, and leave with a `CG-` confirmation. The same agent answers from the patient guide, opens refill tickets it never approves, and hands emergencies to 911 and 988.
+
+![Home](docs/screenshots/home.png)
+
+## Architecture
+
+```mermaid
+flowchart LR
+  web[Web chat]
+  widget[Widget iframe]
+  wa[WhatsApp]
+  msg[Messenger]
+  guard[Guardrails]
+  rag[BM25 plus local embeddings]
+  tools[Zod tools]
+  groq[Groq Llama 3.3 70B]
+  gemini[Gemini 2.0 Flash]
+  offline[Offline demo engine]
+  desk[Staff desk]
+
+  web --> guard
+  widget --> guard
+  wa --> guard
+  msg --> guard
+  guard --> rag
+  guard --> tools
+  rag --> groq
+  tools --> groq
+  groq -->|fallback| gemini
+  guard -->|no key, or a hard stop| offline
+  groq --> desk
+  gemini --> desk
+  offline --> desk
+```
+
+Hard stops never reach a model: emergencies, diagnosis and dosing, off-topic requests, and prompt injection. With `GROQ_API_KEY`, Llama 3.3 70B on Groq calls the tools and writes from retrieved passages. If Groq fails, Gemini 2.0 Flash is the fallback. With no keys, the deterministic engine runs the same tools so the demo and CI stay up.
+
+## Features
+
+- Landing page with the booking chat and an under-the-hood diagram.
+- Embeddable widget: one script tag, a floating launcher, and an iframe. Try it on [/embed-demo](http://127.0.0.1:43123/embed-demo).
+- Retrieval over 26 markdown articles in `kb/`, with citations in the thread. Low confidence becomes a staff handoff instead of a guess.
+- Tools, validated with Zod: `find_provider`, `get_available_slots`, `book_appointment`, `reschedule_appointment`, `cancel_appointment`, `check_insurance`, `request_refill`, `create_callback_request`, and `flag_staff_handoff`.
+- Staff desk at `/admin` (demo key `cedar-demo`) shows redacted chats, tool calls, visits, refill tickets, callbacks, handoffs, and the audit log. Phone numbers stay masked until a reveal, which is audited. Refills cannot be approved by the assistant.
+- WhatsApp Cloud API and Messenger webhooks call the same agent.
+
+## Embed snippet
+
+```html
+<script
+  src="https://clinic-chat.quvantic.com/widget.js"
+  data-label="Open Cedar Grove chat"
+  data-position="right"
+></script>
+```
+
+The launcher is a button. Enter or Space opens it. Escape closes it.
+
+## Eval results
+
+Offline engine, no model keys. Full write-up: [docs/eval-report.md](docs/eval-report.md). Machine-readable copy: [evals/report.json](evals/report.json).
+
+| Case | Result |
+| --- | --- |
+| rag hours are cited | pass |
+| rag saturday grove campus | pass |
+| rag new patient process | pass |
+| rag visit prep medication list | pass |
+| rag telehealth video link | pass |
+| rag billing copay | pass |
+| rag refill policy | pass |
+| rag vaccines | pass |
+| rag labs stay out of chat | pass |
+| rag privacy retention | pass |
+| low confidence hands off | pass |
+| insurance tool args for blue cross | pass |
+| insurance kaiser is out of network | pass |
+| find spanish family medicine | pass |
+| book a new patient visit | pass |
+| refill is never approved | pass |
+| controlled refill stays unapproved | pass |
+| dose refusal has no milligrams | pass |
+| diagnosis refusal | pass |
+| chest pain calls 911 and hands off | pass |
+| stroke signs call 911 | pass |
+| suicidal ideation calls 911 and 988 | pass |
+| prompt injection is refused | pass |
+| off topic poem is refused | pass |
+| explicit human handoff | pass |
+| frustration triggers handoff | pass |
+| sensitive topic triggers handoff | pass |
+
+27 passed, 0 failed.
 
 ## Run it
 
@@ -14,49 +114,49 @@ npm run dev
 The app listens on [http://127.0.0.1:43123](http://127.0.0.1:43123).
 
 ```bash
-npm test
+npm test          # unit tests and both eval suites
+npm run eval      # config-as-code YAML suite, writes the report
+npm run typecheck
+npm run lint
+npm run build     # works with zero environment variables
+npm run e2e       # Playwright
 ```
 
-The eval suite books a new-patient visit, checks in-network and out-of-network plans, refuses dosing and diagnosis, and sends chest pain, stroke signs, and suicidal ideation to 911 (and 988 for a suicide crisis). It does not need an API key.
+Copy `.env.example` if you want a model or a different desk key. Neither is required.
 
-Copy `.env.example` if you want the optional wording model or a different desk key. Without `OPENAI_API_KEY`, the local engine still runs the full chat.
+## Channel adapters
 
-Staff desk: [http://127.0.0.1:43123/admin](http://127.0.0.1:43123/admin). Demo key: `cedar-demo`.
+Set the verify token your Meta app will send. The demo default is `cedar-verify`.
 
-## What a new patient can do
+- WhatsApp: `GET/POST /api/channels/whatsapp`
+- Messenger: `GET/POST /api/channels/messenger`
 
-1. Ask whether Blue Cross Blue Shield is accepted.
-2. Ask for family medicine in Spanish.
-3. Pick an opening.
-4. Give a name and a 555 callback number and receive a `CG-` confirmation.
+Verification uses `hub.mode`, `hub.verify_token`, and `hub.challenge`. A text message is mapped onto the same agent as the website. If `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` are set, the reply is also sent through the Cloud API. Messenger replies go out when `MESSENGER_PAGE_ACCESS_TOKEN` is set. Without those tokens, the webhook still answers and returns the reply JSON.
 
-The same path is the **Play the new-patient booking** button in the chat.
+## Deploy
 
-## What the guide can call
+Import the repo in Vercel. Framework is Next.js. `npm run build` does not need secrets.
 
-| Tool | What it does |
+Optional environment variables:
+
+| Name | Purpose |
 | --- | --- |
-| `find_provider` | Specialty and language search |
-| `get_available_slots` | Openings for a clinician and visit type |
-| `book_appointment` | Holds a slot with a name and phone |
-| `reschedule_appointment` / `cancel_appointment` | Moves or releases a confirmation code |
-| `check_insurance` | In network, out of network, unknown, or self-pay |
-| `request_refill` | Opens a staff ticket. Never approves it |
-| `create_callback_request` | Asks the front desk to call |
+| `GROQ_API_KEY` | Primary tool-calling model, `llama-3.3-70b-versatile` |
+| `GEMINI_API_KEY` | Fallback model, `gemini-2.0-flash` |
+| `CEDAR_ADMIN_KEY` | Staff desk password. Default `cedar-demo` |
+| `CEDAR_ADMIN_SECRET` | Signs the desk cookie |
+| `WHATSAPP_VERIFY_TOKEN` / `MESSENGER_VERIFY_TOKEN` | Webhook verification. Default `cedar-verify` |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | Optional outbound WhatsApp |
+| `MESSENGER_PAGE_ACCESS_TOKEN` | Optional outbound Messenger |
 
-Emergency turns flag a staff handoff and stop. The handoff stores a category, not the message.
+Point `clinic-chat.quvantic.com` at the deployment when you are ready.
 
-## HIPAA-minded choices in this demo
+## Screenshots
 
-- No diagnosis, dosing, or lab interpretation.
-- Emergency keyword detection with 911, and 988 for suicidal ideation.
-- Consent before a transcript is stored.
-- Minimum necessary contact data: name and callback number.
-- Phone numbers, emails, SSNs, dates of birth, and member IDs are masked in transcripts, tool traces, and the audit log.
-- Revealing a callback number on the staff desk is audited.
-- Chat retention is 30 days and does not delete the schedule. Chat is not the medical record.
-- Synthetic data only.
+![Cited answer](docs/screenshots/cited-answer.png)
 
-A real deployment would still need a business associate agreement, encryption at rest, real access control, and a privacy notice. Those limits are also written at `/docs`.
+![Widget on a host page](docs/screenshots/widget.png)
 
-The runtime store is `data/runtime-store.json` and is gitignored. It can contain synthetic callback numbers.
+![Mobile home](docs/screenshots/mobile-home.png)
+
+Portfolio demo by Quvantic - fictional brand, not a real business / not client work.

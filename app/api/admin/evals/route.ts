@@ -1,12 +1,12 @@
 import { deskOpen } from "@/lib/desk";
-import { runEvals } from "@/lib/evals";
+import { runConfigEvals } from "@/lib/eval-suite";
 import { getStore } from "@/lib/persist";
 
 export async function POST() {
   if (!(await deskOpen())) {
     return Response.json({ error: "locked" }, { status: 401 });
   }
-  const results = runEvals();
+  const results = runConfigEvals();
   const passed = results.filter((result) => result.pass).length;
   const store = getStore();
   store.addAudit({

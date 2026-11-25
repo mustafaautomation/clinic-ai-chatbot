@@ -52,9 +52,39 @@ export default function HomePage() {
               <Link href="/docs" className="rounded-full bg-secondary px-4 py-2">
                 How the safety rules work
               </Link>
+              <Link href="/embed-demo" className="rounded-full bg-secondary px-4 py-2">
+                Embed the widget
+              </Link>
             </div>
           </div>
           <ChatPanel />
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pb-12">
+          <div className="rounded-3xl bg-card p-6 ring-1 ring-foreground/10">
+            <p className="text-xs font-medium tracking-[0.18em] text-moss uppercase">Under the hood</p>
+            <h2 className="mt-2 font-heading text-4xl text-bark">One agent, four doors in.</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              The website, the embeddable widget, WhatsApp, and Messenger all call the same agent. Hard
+              guardrails run first. If Groq or Gemini is configured, that model calls the clinic tools and
+              writes from retrieved passages. With no key, a deterministic demo engine does the same jobs so
+              the live demo and CI never depend on a secret.
+            </p>
+            <div className="mt-6 grid gap-3 md:grid-cols-5 md:items-stretch">
+              {[
+                ["Doors", "Web chat, widget iframe, WhatsApp, Messenger"],
+                ["Guardrails", "Emergencies, refusals, off-topic, injection"],
+                ["Retrieval", "BM25 plus local embeddings over /kb"],
+                ["Tools", "Insurance, schedule, refills, handoff"],
+                ["Desk", "Redacted inbox, tickets, audit, evals"],
+              ].map(([title, copy]) => (
+                <article key={title} className="rounded-2xl bg-foam p-4">
+                  <h3 className="font-heading text-2xl text-bark">{title}</h3>
+                  <p className="mt-2 text-sm leading-5 text-muted-foreground">{copy}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-12 md:grid-cols-2">

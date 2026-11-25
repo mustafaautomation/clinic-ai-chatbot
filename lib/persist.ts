@@ -44,6 +44,7 @@ function seed(store: ClinicStore, now = new Date()) {
     sessionId: "seed-drill",
     category: "emergency_medical",
     note: "Synthetic drill. No real patient. Category only.",
+    summary: "Synthetic drill. The message body was not stored.",
   });
   store.addAudit({
     actor: "system",
@@ -51,6 +52,14 @@ function seed(store: ClinicStore, now = new Date()) {
     resource: "synthetic",
     detail: "Loaded fictional desk records for the portfolio demo.",
   });
+}
+
+export function resetDemoStore(): ClinicStore {
+  const store = getStore();
+  store.resetRecords();
+  seed(store);
+  store.commit();
+  return store;
 }
 
 export function getStore(): ClinicStore {

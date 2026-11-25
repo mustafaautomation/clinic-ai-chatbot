@@ -109,7 +109,15 @@ async function readStream(
   }
 }
 
-export function ChatPanel({ tall = false }: { tall?: boolean }) {
+export function ChatPanel({
+  tall = false,
+  fill = false,
+  channel = "web",
+}: {
+  tall?: boolean;
+  fill?: boolean;
+  channel?: "web" | "widget";
+}) {
   const consent = useSyncExternalStore(subscribeConsent, readConsent, () => false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -189,6 +197,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
           sessionId: sessionRef.current,
           message: trimmed,
           consent: true,
+          channel,
         }),
       });
       if (!response.ok || !response.body) {
@@ -262,7 +271,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
   }
 
   return (
-    <section className="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-3xl bg-card shadow-[0_20px_60px_-36px_rgba(42,33,24,0.7)] ring-1 ring-foreground/10">
+    <section className={`flex flex-col overflow-hidden rounded-3xl bg-card shadow-[0_20px_60px_-36px_rgba(42,33,24,0.7)] ring-1 ring-foreground/10 ${fill ? "h-full min-h-0" : "h-full min-h-[32rem]"}`}>
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <p className="font-heading text-xl text-bark">Grove guide</p>
@@ -270,9 +279,21 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
             Answers from the patient guide and scheduling tools. No diagnosis.
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={resetChat}>
-          New chat
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="handoff-button"
+            disabled={!consent || busy}
+            onClick={() => void send("I want to talk to a human")}
+          >
+            Talk to a person
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={resetChat}>
+            New chat
+          </Button>
+        </div>
       </div>
 
       {!consent && (
@@ -282,13 +303,13 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                 Do not enter real health information, identification numbers, or anyone else&apos;s data.
                 Synthetic names and 555 numbers are enough.
               </p>
-              <Button type="button" className="mt-3" onClick={acceptConsent}>
+              <Button type="button" className="mt-3" data-testid="consent" onClick={acceptConsent}>
                 Continue with demo consent
               </Button>
             </div>
           )}
 
-          <div ref={scroller} className={`flex-1 space-y-4 overflow-y-auto px-4 py-4 ${tall ? "min-h-[60vh]" : "min-h-[22rem]"}`}>
+          <div ref={scroller} data-testid="messages" className={`flex-1 space-y-4 overflow-y-auto px-4 py-4 ${fill ? "min-h-0" : tall ? "min-h-[60vh]" : "min-h-[22rem]"}`}>
             {messages.length === 0 && (
               <div className="rounded-2xl bg-foam/80 p-4">
                 <p className="font-heading text-2xl text-bark">Ask the way you would ask the front desk.</p>
@@ -322,6 +343,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                 className={message.role === "user" ? "ml-8 flex justify-end" : "mr-6"}
               >
                 <div
+                  data-testid={message.role === "assistant" ? "assistant-message" : "user-message"}
                   className={
                     message.role === "user"
                       ? "max-w-[34rem] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground"
@@ -333,9 +355,16 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                   {message.emergency && (
                     <p className="mb-1 text-xs font-semibold tracking-wide uppercase">Emergency handoff</p>
                   )}
-                  <p className="whitespace-pre-wrap">
-                    {message.text || (message.pending ? "Checking the guide…" : "")}
-                  </p>
+                  {message.pending && !message.text ? (
+                    <p className="flex items-center gap-1 py-1" data-testid="typing" aria-live="polite">
+                      <span className="sr-only">The guide is typing</span>
+                      <span className="size-1.5 animate-bounce rounded-full bg-moss [animation-delay:0ms]" />
+                      <span className="size-1.5 animate-bounce rounded-full bg-moss [animation-delay:120ms]" />
+                      <span className="size-1.5 animate-bounce rounded-full bg-moss [animation-delay:240ms]" />
+                    </p>
+                  ) : (
+                    <RichText text={message.text} />
+                  )}
                   {message.tools && message.tools.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {message.tools.map((tool, index) => (
@@ -356,6 +385,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                         <Link
                           key={citation.id}
                           href={`/knowledge#${citation.slug}`}
+                          data-testid="citation"
                           className="rounded-full bg-secondary px-2 py-1 text-[11px] text-secondary-foreground"
                         >
                           {citation.title}
@@ -402,6 +432,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                   variant="outline"
                   size="sm"
                   className="shrink-0"
+                  data-testid="suggestion"
                   disabled={busy || !consent}
                   onClick={() => void send(suggestion)}
                 >
@@ -423,6 +454,7 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
             </label>
             <Textarea
               id="guide-message"
+              data-testid="composer"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder={consent ? "Ask about a plan, a clinician, or a visit" : "Consent is required before chatting"}
@@ -443,11 +475,42 @@ export function ChatPanel({ tall = false }: { tall?: boolean }) {
                   Limits
                 </Link>
               </p>
-              <Button type="submit" disabled={!consent || busy || !draft.trim()}>
+              <Button type="submit" data-testid="send" disabled={!consent || busy || !draft.trim()}>
                 {busy ? "Sending" : "Send"}
               </Button>
             </div>
           </form>
     </section>
+  );
+}
+
+function RichText({ text }: { text: string }) {
+  const blocks = text.split(/\n{2,}/);
+  return (
+    <div className="space-y-2 whitespace-pre-wrap">
+      {blocks.map((block) => {
+        if (block.split("\n").every((line) => line.trim().startsWith("- "))) {
+          return (
+            <ul key={block} className="list-disc space-y-1 pl-4">
+              {block.split("\n").map((line) => (
+                <li key={line}>{inline(line.replace(/^- /, ""))}</li>
+              ))}
+            </ul>
+          );
+        }
+        return <p key={block}>{inline(block)}</p>;
+      })}
+    </div>
+  );
+}
+
+function inline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
   );
 }
