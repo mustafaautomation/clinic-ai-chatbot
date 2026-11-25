@@ -87,6 +87,7 @@ export type Session = {
   controlledSubstance: boolean;
   lastConfirmation: string | null;
   pendingConfirmation: string | null;
+  botPaused?: boolean;
 };
 
 export type Slot = {
@@ -184,4 +185,5 @@ export type TurnResult = {
   emergency: boolean;
   refusal: boolean;
   handoff: boolean;
+  engine?: "live" | "demo";
 };

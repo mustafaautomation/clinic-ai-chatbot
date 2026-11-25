@@ -85,20 +85,23 @@ export async function runAgent(
       trimmed,
     );
     if (!llmEnabled() || hardGuardrail(trimmed) || !likelyAction) {
-      return handleTurn(store, sessionId, trimmed, options);
+      return { ...handleTurn(store, sessionId, trimmed, options), engine: "demo" };
     }
   }
   const session = store.getSession(sessionId);
   if (!session) throw new Error("Unknown session");
   const llm = await runGroundedToolLoop({ store, session, message: trimmed, now: options.now });
-  if (!llm) return handleTurn(store, sessionId, trimmed, options);
+  if (!llm) return { ...handleTurn(store, sessionId, trimmed, options), engine: "demo" };
   const grounded = answerFromGuide(trimmed);
-  return saveExchange(store, session, trimmed, {
+  return {
+    ...saveExchange(store, session, trimmed, {
     text: llm.text,
     citations: grounded?.citations ?? [],
     tools: llm.tools,
     suggestions: [],
     emergency: false,
     refusal: false,
-  });
+  }),
+    engine: "live",
+  };
 }

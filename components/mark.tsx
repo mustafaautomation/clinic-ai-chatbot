@@ -1,12 +1,11 @@
 export function Mark({ className = "size-9" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
-      <rect width="48" height="48" rx="14" fill="#1f4d3a" />
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <path
-        d="M24 8c2 6 2 10 0 16-4-2-7-1-10 2 4 1 7 4 8 8 2-5 5-8 10-9-3-2-5-5-5-9-1 2-2 3-3 4V8Z"
-        fill="#f3eee4"
+        fill="currentColor"
+        d="M12 2.2c.7 2.8.5 4.8-.5 6.6-2-.6-3.5-.2-4.8 1.1 1.9.4 3.3 1.6 3.9 3.8 1.1-2.3 2.5-3.8 4.9-4.2-1.4-1.1-2.3-2.5-2.4-4.2-.5.9-1.1 1.5-1.1 2.1V2.2Z"
       />
-      <path d="M24 24v16" stroke="#c46b4a" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 13.2V21" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
     </svg>
   );
 }

@@ -18,7 +18,7 @@ type AppointmentView = {
 };
 
 type DeskState = {
-  sessions: { id: string; createdAt: string; messages: ChatMessage[] }[];
+  sessions: { id: string; createdAt: string; messages: ChatMessage[]; botPaused?: boolean }[];
   appointments: AppointmentView[];
   tickets: RefillTicket[];
   callbacks: CallbackRequest[];
@@ -117,6 +117,20 @@ export function AdminDesk() {
     }
     const data = (await response.json()) as { phone: string };
     setRevealed((current) => ({ ...current, [id]: data.phone }));
+    await load();
+  }
+
+  async function resume(sessionId: string) {
+    const response = await fetch("/api/admin/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+    if (!response.ok) {
+      setError("The guide could not be resumed.");
+      return;
+    }
+    setNotice("The guide is available on that chat again.");
     await load();
   }
 
@@ -247,13 +261,20 @@ export function AdminDesk() {
           <Stat label="Handoffs" value={state.handoffs.length} />
         </TabsContent>
 
-        <TabsContent value="chats" className="mt-4 space-y-4">
+        <TabsContent value="chats" className="mt-4 grid gap-3 md:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="space-y-2">
           {state.sessions.length === 0 && <Empty label="No transcripts yet." />}
           {state.sessions.map((session) => (
-            <article key={session.id} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+            <article key={session.id} className={`rounded-2xl p-4 ring-1 ring-foreground/10 ${session.botPaused ? "bg-accent-soft" : "bg-card"}`}>
               <p className="text-xs text-muted-foreground">
                 {new Date(session.createdAt).toLocaleString()} · {session.messages.length} messages
+                {session.botPaused ? " · human" : ""}
               </p>
+              {session.botPaused && (
+                <Button type="button" size="sm" className="mt-2" data-testid="resume-bot" onClick={() => void resume(session.id)}>
+                  Resume bot
+                </Button>
+              )}
               <div className="mt-3 space-y-2">
                 {session.messages.map((message) => (
                   <p key={message.id} className="text-sm">
@@ -269,6 +290,10 @@ export function AdminDesk() {
               </div>
             </article>
           ))}
+          </div>
+          <div className="hidden rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground md:block">
+            Select a transcript. Unread handoffs use the sage wash. Resume bot hands the chat back to the guide.
+          </div>
         </TabsContent>
 
         <TabsContent value="schedule" className="mt-4">

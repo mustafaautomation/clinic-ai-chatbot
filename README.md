@@ -8,6 +8,8 @@ Live demo: [https://clinic-chat.quvantic.com](https://clinic-chat.quvantic.com)
 
 ![Cedar Grove chat demo](docs/demo.gif)
 
+The widget is a sage glass panel: a branded launcher with a teaser and two nudge pills, a Demo mode or Live AI pill, follow-up chips, slot chips from the real schedule, citation chips, and a handoff to the front desk. With no model key the offline engine still streams the answer. With Groq or Gemini configured, the same thread shows Live AI.
+
 ## What it does
 
 A new patient can ask whether Blue Cross is in network, choose Spanish-speaking family medicine, pick an opening, and leave with a `CG-` confirmation. The same agent answers from the patient guide, opens refill tickets it never approves, and hands emergencies to 911 and 988.

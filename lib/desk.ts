@@ -15,6 +15,7 @@ export function deskState() {
       id: session.id,
       createdAt: session.createdAt,
       messages: session.messages,
+      botPaused: Boolean(session.botPaused),
     })),
     appointments: store.appointments.map(maskAppointment),
     tickets: store.tickets.map(maskTicket),
