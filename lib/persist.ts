@@ -3,7 +3,27 @@ import path from "path";
 import { buildSlots, getProvider } from "@/lib/directory";
 import { ClinicStore } from "@/lib/store";
 
-const FILE = path.join(process.cwd(), "data", "runtime-store.json");
+function storeFile(): string {
+  if (process.env.CLINIC_STORE_PATH) return process.env.CLINIC_STORE_PATH;
+  if (process.env.VERCEL) return "/tmp/clinic-ai-chatbot-store.json";
+  return path.join(process.cwd(), "data", "runtime-store.json");
+}
+
+export function writeStoreSnapshot(file: string, store: ClinicStore): boolean {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const data = store.dump();
+    for (const session of data.sessions) {
+      session.pendingConfirmation ??= null;
+      session.channel ??= "web";
+      session.externalKey ??= null;
+    }
+    fs.writeFileSync(file, JSON.stringify(data, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function seed(store: ClinicStore, now = new Date()) {
   const provider = getProvider("alvarez")!;
@@ -65,19 +85,19 @@ export function resetDemoStore(): ClinicStore {
 export function getStore(): ClinicStore {
   const globalStore = globalThis as typeof globalThis & { __cgStore?: ClinicStore };
   if (!globalStore.__cgStore) {
+    const file = storeFile();
     const store = new ClinicStore();
-    if (fs.existsSync(FILE)) {
-      store.load(JSON.parse(fs.readFileSync(FILE, "utf8")));
+    if (fs.existsSync(file)) {
+      try {
+        store.load(JSON.parse(fs.readFileSync(file, "utf8")));
+      } catch {
+        seed(store);
+      }
     } else {
       seed(store);
     }
     store.onChange = () => {
-      fs.mkdirSync(path.dirname(FILE), { recursive: true });
-      const data = store.dump();
-      for (const session of data.sessions) {
-        session.pendingConfirmation ??= null;
-      }
-      fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+      writeStoreSnapshot(file, store);
     };
     store.commit();
     globalStore.__cgStore = store;

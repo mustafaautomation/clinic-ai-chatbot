@@ -1,8 +1,12 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { describe, expect, it } from "vitest";
 import { ClinicStore } from "@/lib/store";
 import { startSession } from "@/lib/engine";
 import { executeTool } from "@/lib/tools";
 import { llmProviders } from "@/lib/llm";
+import { writeStoreSnapshot } from "@/lib/persist";
 
 describe("zod tool validation", () => {
   it("rejects a booking without a phone number", () => {
@@ -23,6 +27,23 @@ describe("zod tool validation", () => {
     const result = executeTool(store, session, "check_insurance", { plan_name: "Aetna" });
     expect(result.ok).toBe(true);
     expect(result.result).toMatchObject({ network: "in", matched_plan: "Aetna" });
+  });
+});
+
+describe("serverless store", () => {
+  it("keeps memory when the snapshot path is not writable", () => {
+    const store = new ClinicStore();
+    store.addAudit({
+      actor: "system",
+      action: "seed_demo",
+      resource: "synthetic",
+      detail: "memory only",
+    });
+    const blocker = path.join(os.tmpdir(), `clinic-not-a-dir-${process.pid}`);
+    fs.writeFileSync(blocker, "not a directory");
+    expect(writeStoreSnapshot(path.join(blocker, "store.json"), store)).toBe(false);
+    fs.unlinkSync(blocker);
+    expect(store.audit).toHaveLength(1);
   });
 });
 

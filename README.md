@@ -149,7 +149,7 @@ Optional environment variables:
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | Optional outbound WhatsApp |
 | `MESSENGER_PAGE_ACCESS_TOKEN` | Optional outbound Messenger |
 
-Point `clinic-chat.quvantic.com` at the deployment when you are ready.
+Point `clinic-chat.quvantic.com` at the deployment when you are ready. On Vercel the schedule lives in memory and, when `/tmp` is writable, in `/tmp/clinic-ai-chatbot-store.json`. The project disk is never required to be writable. A cold start reseeds the synthetic desk.
 
 ## Screenshots
 
